@@ -1,0 +1,10 @@
+{"question": "How do I reset my password if I forgot it?", "expect": "answer", "expected_doc": "DOC-001", "keywords": ["self-service", "password.company.example", "30 minutes"]}
+{"question": "What should I do when the VPN says connection failed?", "expect": "answer", "expected_doc": "DOC-002", "keywords": ["password", "certificate", "internet"]}
+{"question": "How do I add a network printer on Windows?", "expect": "answer", "expected_doc": "DOC-003", "keywords": ["Settings", "Printers", "Add device"]}
+{"question": "How many days of annual leave do I get each year?", "expect": "answer", "expected_doc": "DOC-004", "keywords": ["20 days"]}
+{"question": "What is the daily meal limit when travelling?", "expect": "answer", "expected_doc": "DOC-005", "keywords": ["$65"]}
+{"question": "Who do I page for a SEV-1 incident?", "expect": "answer", "expected_doc": "DOC-007", "keywords": ["on-call", "PagerDuty", "15 minutes"]}
+{"question": "How do I request software that is not on the approved list?", "expect": "answer", "expected_doc": "DOC-008", "keywords": ["IT portal", "3 business days"]}
+{"question": "What is the Wi-Fi password for the guest network?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "How do I book a meeting room on floor 5?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "What is the company's stock ticker symbol?", "expect": "fallback", "expected_doc": null, "keywords": []}

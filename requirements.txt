@@ -1,0 +1,6 @@
+# RAG knowledge assistant MVP — dependencies
+# Core runs on the standard library + NumPy only (TF-IDF retriever).
+# sentence-transformers is optional: when installed, the retriever uses
+# real embeddings (all-MiniLM-L6-v2); otherwise it falls back to TF-IDF.
+numpy>=1.26
+sentence-transformers>=3.0

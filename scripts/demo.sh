@@ -13,7 +13,7 @@ echo
 echo "--- 2. Unanswerable question (fallback expected) ---"
 python3 -m rag_mvp.cli ask "What is the Wi-Fi password for the guest network?"
 echo
-echo "--- 3. Eval harness (10 questions) ---"
+echo "--- 3. Eval harness (20 questions) ---"
 python3 -m rag_mvp.eval
 echo
 echo "--- 4. Web UI ---"

@@ -117,6 +117,39 @@ on a real corpus the threshold must be re-calibrated on that corpus's
 own eval set. (Embeddings backend, if installed, needs its own
 calibration run; its scores live on a different scale.)
 
+## Expanded eval (Nov 21, after coach review)
+
+Coach Damien De La Cerda asked for harder testing before the final
+submission, so the eval set grew from 10 to 20 questions
+(`eval/questions.jsonl`): 5 harder answerable questions (paraphrased
+wording, multi-fact, short queries) and 5 near-miss unanswerable ones
+(topics adjacent to the docs, or scoped to someone/something the docs
+do not cover). Result: **16/20 pass** (grounded-answer rate 83%,
+correct-fallback rate 75%, false-fallback rate 17%).
+
+The 4 failures are real findings, not bad questions:
+
+- **False fallbacks (2):** "I changed my password yesterday and now
+  the VPN will not connect" scored 0.27 and "How many sick days do I
+  get?" scored 0.28, both under the 0.30 threshold, although the
+  answers are in the docs. Cause: TF-IDF with no stemming
+  ("connect" does not match "Connection"/"connects") and short
+  queries scoring low. The near-miss "change the toner cartridge"
+  scored 0.29, so the bands now overlap and **no threshold separates
+  them** — threshold tuning cannot fix this.
+- **False answers (2):** "parental leave policy for contractors" and
+  "reset my manager's password" were answered with the employee
+  policy and the self-service reset, which do not apply to those
+  cases. Cause: TF-IDF has no scope or entity reasoning; it cannot
+  tell that a rule for employees does not cover contractors, or that
+  self-service reset is only for your own account.
+
+Fixes for later (not attempted before the deadline, per the coach's
+advice to test what exists rather than add features): stemming or
+embeddings for paraphrase robustness, and a generative-model layer
+that checks scope before answering. The failures are documented here
+rather than hidden, because the eval's job is to show the gaps.
+
 ## What is still missing for the Nov 22 final submission
 
 1. **3-minute demo video** (public link) — record the demo script in

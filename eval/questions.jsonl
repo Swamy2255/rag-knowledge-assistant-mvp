@@ -8,3 +8,13 @@
 {"question": "What is the Wi-Fi password for the guest network?", "expect": "fallback", "expected_doc": null, "keywords": []}
 {"question": "How do I book a meeting room on floor 5?", "expect": "fallback", "expected_doc": null, "keywords": []}
 {"question": "What is the company's stock ticker symbol?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "I changed my password yesterday and now the VPN will not connect. What is the most likely cause?", "expect": "answer", "expected_doc": "DOC-002", "keywords": ["recently changed password", "most common cause"]}
+{"question": "My account locked after I kept entering the wrong password. How long do I have to wait?", "expect": "answer", "expected_doc": "DOC-001", "keywords": ["15 minutes", "three failed attempts"]}
+{"question": "What happens if I submit an expense claim without a receipt?", "expect": "answer", "expected_doc": "DOC-005", "keywords": ["rejected automatically"]}
+{"question": "How long does a software request take if it needs admin rights?", "expect": "answer", "expected_doc": "DOC-008", "keywords": ["10 business days", "security review"]}
+{"question": "How many sick days do I get?", "expect": "answer", "expected_doc": "DOC-004", "keywords": ["10 paid sick days"]}
+{"question": "How do I change the toner cartridge on the third-floor printer?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "Can I work from home on Fridays?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "How do I book a desk in the office?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "What is the company's parental leave policy for contractors?", "expect": "fallback", "expected_doc": null, "keywords": []}
+{"question": "How do I reset my manager's password?", "expect": "fallback", "expected_doc": null, "keywords": []}

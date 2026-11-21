@@ -21,8 +21,8 @@ MVP scope from the Solution Blueprint:
   date). If the best retrieval score is below the calibrated threshold,
   it returns the "not found" fallback (directing the user to the IT Help
   Desk) instead of guessing.
-- **Eval harness** (`rag_mvp/eval.py`, `eval/questions.jsonl`): 10 fixed
-  questions (7 answerable, 3 unanswerable). Reports grounded-answer rate,
+- **Eval harness** (`rag_mvp/eval.py`, `eval/questions.jsonl`): 20 fixed
+  questions (12 answerable, 8 unanswerable) after the Nov 21 expansion. Reports grounded-answer rate,
   citation coverage, correct-fallback rate, false-fallback rate, and
   median latency. Results are saved to `eval/results.json`.
 - **Web UI** (`rag_mvp/app.py`): standard-library-only HTTP server —
@@ -35,6 +35,11 @@ MVP scope from the Solution Blueprint:
 |---|---|---|
 | Language | Python 3.12 | |
 | Retrieval | TF-IDF (NumPy) — verified 10/10 on the eval set. Embeddings code is written and auto-detected when installed, but the install was blocked on this VM — see "Embeddings attempt" below | No IBM Cloud dependency |
+
+| Vector store | In-memory NumPy arrays; embeddings cached in `index/embeddings.npy` | No FAISS/Chroma — unnecessary at this scale |
+| Generation | **None configured.** Answers are extractive quotes from retrieved passages | This is the flagged gap (below) |
+| UI | Python `http.server` (stdlib) | No Flask/FastAPI |
+| Corpus | 8 hand-written sample support/ops docs in `corpus/` | Realistic but invented sample content, clearly marked as samples |
 
 ## Embeddings attempt (Nov 7 — blocked by this VM, not by the code)
 
@@ -64,10 +69,6 @@ environment reasons, in this order:
 requirements.txt`, then re-run `python -m rag_mvp.eval` to calibrate the
 embeddings threshold — embedding cosine scores live on a different scale,
 so the TF-IDF threshold (0.30) does not transfer.
-| Vector store | In-memory NumPy arrays; embeddings cached in `index/embeddings.npy` | No FAISS/Chroma — unnecessary at this scale |
-| Generation | **None configured.** Answers are extractive quotes from retrieved passages | This is the flagged gap (below) |
-| UI | Python `http.server` (stdlib) | No Flask/FastAPI |
-| Corpus | 8 hand-written sample support/ops docs in `corpus/` | Realistic but invented sample content, clearly marked as samples |
 
 ## The generation gap (flagged, not hidden)
 
@@ -101,7 +102,7 @@ answers as extractive, not model-generated.
   what was actually used (above). Do not claim Bob wrote or reviewed
   this code.
 
-## Eval results (TF-IDF backend, threshold 0.30)
+## Original 10-question eval results (TF-IDF backend, threshold 0.30)
 
 Measured Sat Nov 7, 2026 on the 8-document pilot corpus:
 
@@ -157,17 +158,14 @@ rather than hidden, because the eval's job is to show the gaps.
 2. **Problem and Solution Statement** (max 500 words).
 3. **Technology Statement** (max 500 words) — must explain IBM Bob and
    the actual stack; see the honesty notes above.
-4. **Code repository link** — this folder, once Swamy reviews it and
-   decides where to publish it (GitHub or a shared folder). Nothing has
-   been pushed or shared externally.
+4. **Code repository link** — published at https://github.com/Swamy2255/rag-knowledge-assistant-mvp; include the link in the submission.
 
 ## Blockers
 
 - **IBM Cloud / watsonx.ai access** — the generation gap above. The
   prototype is fully demoable without it, but the final Technology
   Statement must address the plan honestly.
-- **Checkpoint blockers unchanged** — team name and coach name are still
-  unknown (separate from this build); the Nov 6 Career Fair deadline
+- **Checkpoint blockers unchanged** — team name remains unconfirmed; coach Damien De La Cerda provided evaluation feedback (separate from this build); the Nov 6 Career Fair deadline
   has passed. The Nov 22 final submission is unaffected.
 - **Real corpus** — the pilot corpus is invented sample content. A real
   pilot needs one team's actual approved docs plus an eval set written

@@ -134,14 +134,6 @@ The documented local run completed in 0.736 seconds with no failures or errors. 
 
 Evidence: [IBM Bob contributions](IBM-BOB-CONTRIBUTIONS.md) and [original Bob review report](rag-knowledge-assistant-mvp-code-review-report.html).
 
-## Three-minute demonstration
-
-1. Show the corpus and its metadata.
-2. Ask: "How do I reset my password if I forgot it?" Show the answer and citations.
-3. Ask: "What is the Wi-Fi password for the guest network?" Show the fallback.
-4. Run `python -m rag_mvp.eval` and explain the 16/20 results and limitations.
-5. Show the automated test summary and IBM Bob contributions; explain the remaining limitations. See [DEMO-SCRIPT.md](DEMO-SCRIPT.md).
-
 ## Submission status
 
 - Public code repository: https://github.com/Swamy2255/rag-knowledge-assistant-mvp

@@ -34,8 +34,7 @@ MVP scope from the Solution Blueprint:
 | Layer | What is actually used | Notes |
 |---|---|---|
 | Language | Python 3.12 | |
-| Retrieval | TF-IDF (NumPy) — verified 10/10 on the eval set. Embeddings code is written and auto-detected when installed, but the install was blocked on this VM — see "Embeddings attempt" below | No IBM Cloud dependency |
-
+| Retrieval | TF-IDF (NumPy) — 10/10 on the original eval, 16/20 on the expanded eval. Embeddings code is written and auto-detected when installed, but the install was blocked on this VM — see "Embeddings attempt" below | No IBM Cloud dependency |
 | Vector store | In-memory NumPy arrays; embeddings cached in `index/embeddings.npy` | No FAISS/Chroma — unnecessary at this scale |
 | Generation | **None configured.** Answers are extractive quotes from retrieved passages | This is the flagged gap (below) |
 | UI | Python `http.server` (stdlib) | No Flask/FastAPI |
@@ -66,7 +65,7 @@ environment reasons, in this order:
 
 **To enable embeddings later** (on a machine with normal network):
 `python3 -m venv .venv && source .venv/bin/activate && pip install -r
-requirements.txt`, then re-run `python -m rag_mvp.eval` to calibrate the
+requirements.txt && pip install "sentence-transformers>=3.0"`, then re-run `python -m rag_mvp.eval` to calibrate the
 embeddings threshold — embedding cosine scores live on a different scale,
 so the TF-IDF threshold (0.30) does not transfer.
 
@@ -94,13 +93,13 @@ answers as extractive, not model-generated.
 - The code, corpus, and docs in this repo were written by **Muse Spark**
   (Meta's AI coding agent) working from Swamy's approved Solution
   Blueprint and Technical Architecture drafts.
-- **IBM Bob was not used in this build.** IBM Bob is IBM's AI assistant
-  and is mandatory for the Fall 2026 cohort, but no IBM Bob access was
-  available on this machine, so no Bob usage can be claimed. The
-  Technology Statement must be honest about this: either describe the
-  plan to use Bob for development/review once access exists, or describe
-  what was actually used (above). Do not claim Bob wrote or reviewed
-  this code.
+- **IBM Bob was not used in the original prototype build** due to access limitations. During final submission preparation, Bob was subsequently used for a structured code review and controlled implementation of HTTP validation, request-size limits, security headers on the application's HTML and JSON responses, validation-warning logging, dependency clarification, and automated tests. The original Bob report is labeled November 22, 2026; the local preparation and push occurred on November 21 Central Time.
+- **ChatGPT** assisted with documentation, frontend presentation, submission drafts and demo preparation.
+- See [IBM-BOB-CONTRIBUTIONS.md](IBM-BOB-CONTRIBUTIONS.md) and the [Bob review report](rag-knowledge-assistant-mvp-code-review-report.html) for the recorded development contributions. IBM Bob was a development assistant, not a runtime model.
+
+## Final-stage automated testing
+
+The user-reported Windows test execution ran 85 standard-library unittest cases (18 ingestion, 18 retrieval, 20 answering, 29 HTTP) in 0.736 seconds, all passing. The separate 20-question evaluation was rerun with unchanged 16/20 outcomes. The corpus, retrieval logic and original committed evaluation were preserved. The remaining four retrieval/scope failures and optional embedding cache issue are not resolved. The local HTTP server is not production-ready.
 
 ## Original 10-question eval results (TF-IDF backend, threshold 0.30)
 
@@ -156,8 +155,7 @@ rather than hidden, because the eval's job is to show the gaps.
 1. **3-minute demo video** (public link) — record the demo script in
    README.md: one cited answer, one fallback, the eval run, the web UI.
 2. **Problem and Solution Statement** (max 500 words).
-3. **Technology Statement** (max 500 words) — must explain IBM Bob and
-   the actual stack; see the honesty notes above.
+3. **Technology Statement** (max 500 words) — describe IBM Bob's actual final-stage review, hardening and testing; watsonx.ai is not configured.
 4. **Code repository link** — published at https://github.com/Swamy2255/rag-knowledge-assistant-mvp; include the link in the submission.
 
 ## Blockers

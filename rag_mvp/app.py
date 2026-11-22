@@ -7,6 +7,13 @@ Then open http://localhost:8080 in a browser.
 Endpoints:
   GET  /        the chat page
   POST /ask    {"question": "..."} -> the answer dict as JSON
+
+Security hardening (applied Nov 22 2026 via IBM Bob code review):
+  - MAX_BODY_BYTES: hard cap on request body; oversized requests → 413
+  - MAX_QUESTION_CHARS: server-side question length guard
+  - Security response headers on every response (nosniff, no-frame)
+  - Content-Length validation before reading body
+  - Errors logged to stderr at WARNING level; request bodies never logged
 """
 
 from __future__ import annotations
@@ -16,6 +23,13 @@ import json
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+# Hard cap on the request body read.  Oversized payloads are rejected with
+# HTTP 413 before any bytes are consumed beyond this limit.
+MAX_BODY_BYTES = 65_536
+
+# Server-side question length guard (matches the UI maxlength="2000").
+MAX_QUESTION_CHARS = 2_000
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -188,18 +202,31 @@ document.querySelectorAll('.suggestion').forEach(b=>b.addEventListener('click',(
 """
 
 
+def _log_warning(message: str) -> None:
+    """Write a WARNING line to stderr.  Never include request body content."""
+    print(f"WARNING [{__name__}]: {message}", file=sys.stderr)
+
+
 class Handler(BaseHTTPRequestHandler):
     retriever = None
     backend = "unknown"
 
-    def log_message(self, *args):  # keep the console quiet
+    def log_message(self, fmt: str, *args) -> None:  # noqa: ARG002
+        # Suppress noisy per-request access lines from the base class.
+        # Errors are logged explicitly via _log_warning().
         pass
+
+    def _add_security_headers(self) -> None:
+        """Attach security headers to the response currently being built."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
 
     def _send_json(self, payload: dict, status: int = 200) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self._add_security_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -209,6 +236,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
+            self._add_security_headers()
             self.end_headers()
             self.wfile.write(body)
         else:
@@ -218,16 +246,51 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != "/ask":
             self.send_error(404, "Not found")
             return
-        length = int(self.headers.get("Content-Length", 0))
+
+        # --- Content-Length validation ---
+        raw_cl = self.headers.get("Content-Length", "").strip()
+        if not raw_cl.isdigit():
+            _log_warning(f"POST /ask rejected: missing or non-numeric Content-Length ({raw_cl!r})")
+            self._send_json({"error": "Content-Length header is required and must be a non-negative integer"}, status=400)
+            return
+        length = int(raw_cl)
+
+        # --- Body size cap: reject before reading ---
+        if length > MAX_BODY_BYTES:
+            _log_warning(f"POST /ask rejected: Content-Length {length} exceeds {MAX_BODY_BYTES} byte limit")
+            self._send_json(
+                {"error": f"Request body too large (limit: {MAX_BODY_BYTES} bytes)"},
+                status=413,
+            )
+            return
+
+        # --- Read and parse JSON ---
+        raw = self.rfile.read(length) if length else b"{}"
         try:
-            payload = json.loads(self.rfile.read(length) or b"{}")
+            payload = json.loads(raw)
         except json.JSONDecodeError:
+            _log_warning("POST /ask rejected: body is not valid JSON")
             self._send_json({"error": "invalid JSON"}, status=400)
             return
+
+        # --- Payload type check ---
+        if not isinstance(payload, dict):
+            _log_warning(f"POST /ask rejected: payload root is {type(payload).__name__}, expected object")
+            self._send_json({"error": "request body must be a JSON object"}, status=400)
+            return
+
+        # --- Question field validation ---
         question = str(payload.get("question", "")).strip()
         if not question:
             self._send_json({"error": "question is required"}, status=400)
             return
+        if len(question) > MAX_QUESTION_CHARS:
+            self._send_json(
+                {"error": f"question exceeds maximum length of {MAX_QUESTION_CHARS} characters"},
+                status=400,
+            )
+            return
+
         self._send_json(answer(question, self.retriever, self.backend))
 
 

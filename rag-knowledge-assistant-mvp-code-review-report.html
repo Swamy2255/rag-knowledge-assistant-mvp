@@ -1,0 +1,464 @@
+
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RAG MVP — Code Review Report</title>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f7f8fa; --border: #e5e7eb;
+  --text: #1f2328; --muted: #57606a; --accent: #3b82d4;
+  --purple: #7c5cd8; --red: #d9534f; --orange: #e67e22;
+  --green: #2e7d32; --yellow: #b8860b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif; }
+.page { max-width: 760px; margin: 0 auto; padding: 36px 24px 48px; }
+h1 { font-size: 22px; letter-spacing: -.03em; margin: 0 0 4px; }
+h2 { font-size: 15px; font-weight: 700; margin: 36px 0 10px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border); letter-spacing: -.01em; }
+h3 { font-size: 13px; font-weight: 700; margin: 18px 0 6px; }
+.subtitle { font-size: 12px; color: var(--muted); margin: 0 0 20px; }
+.meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0 18px; }
+th { background: var(--surface); text-align: left; padding: 7px 10px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); border: 1px solid var(--border); }
+td { padding: 7px 10px; border: 1px solid var(--border); vertical-align: top; }
+tr:nth-child(even) td { background: #fafbfc; }
+code { font: 12px/1.4 "SFMono-Regular", Consolas, monospace;
+  background: var(--surface); padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--border); }
+pre { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 14px; overflow-x: auto;
+  font: 12px/1.5 "SFMono-Regular", Consolas, monospace; margin: 8px 0 14px; }
+.sev { display: inline-block; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.sev-high   { background: #fde8e8; color: var(--red); }
+.sev-med    { background: #fef3e2; color: var(--orange); }
+.sev-low    { background: #e8f5e9; color: var(--green); }
+.sev-info   { background: #e8f0fe; color: var(--accent); }
+.finding { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 16px; margin: 10px 0; }
+.finding h3 { margin: 0 0 6px; font-size: 13px; }
+.finding p { margin: 5px 0 0; font-size: 13px; color: var(--muted); }
+.finding code { font-size: 11.5px; }
+.fix { background: #f0f7ff; border-left: 3px solid var(--accent);
+  padding: 8px 12px; margin-top: 8px; font-size: 12.5px; border-radius: 0 4px 4px 0; }
+.test-block { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 14px; margin: 8px 0; font-size: 13px; }
+.test-block strong { display: block; margin-bottom: 4px; color: var(--text); }
+.score-row { display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.score-row:last-child { border: 0; }
+.pass { color: var(--green); font-weight: 700; }
+.fail { color: var(--red); font-weight: 700; }
+.warn { color: var(--orange); font-weight: 700; }
+.section-note { font-size: 12px; color: var(--muted); margin: -4px 0 12px; }
+ul { margin: 6px 0 10px; padding-left: 20px; }
+li { margin: 3px 0; }
+p { margin: 8px 0; }
+footer { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--border);
+  text-align: center; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>RAG Knowledge Assistant MVP — Code Review Report</h1>
+  <p class="subtitle">IBM SkillsBuild AI Experiential Learning Lab · Final Submission Review</p>
+  <div class="meta">
+    <span class="badge">Reviewer: IBM Bob (AI, Nov 22 2026)</span>
+    <span class="badge">Branch: main</span>
+    <span class="badge">Backend: TF-IDF (NumPy)</span>
+    <span class="badge">Eval: 16/20 pass</span>
+    <span class="badge">Python 3.10+</span>
+  </div>
+
+  
+  <h2>Executive Summary</h2>
+  <p>The prototype is a well-structured, honest MVP. The five-layer pipeline (ingest → retrieve → answer → cite → fallback) is correctly implemented with clean module boundaries, zero third-party web-framework dependencies, and transparent documentation of its limitations. The core logic contains no data-corrupting bugs.</p>
+  <p>Four categories of findings are documented below, ordered by severity: <strong>security / reliability issues</strong> that need attention before any shared deployment, <strong>retrieval algorithm weaknesses</strong> that directly cause the four evaluation failures, <strong>code quality and correctness issues</strong>, and <strong>documentation accuracy</strong>. No architectural changes are recommended; every fix is a small, targeted addition.</p>
+
+  <table>
+    <tr><th>Area</th><th>Verdict</th></tr>
+    <tr><td>Ingestion (ingest.py)</td><td><span class="sev sev-low">GOOD — 1 minor issue</span></td></tr>
+    <tr><td>Retrieval (retrieval.py)</td><td><span class="sev sev-med">MODERATE — 3 algorithmic issues</span></td></tr>
+    <tr><td>Answering (answer.py)</td><td><span class="sev sev-med">MODERATE — 2 logic issues causing eval failures</span></td></tr>
+    <tr><td>Web UI (app.py)</td><td><span class="sev sev-high">HIGH — 3 security/reliability issues</span></td></tr>
+    <tr><td>Eval harness (eval.py)</td><td><span class="sev sev-low">GOOD — 1 correctness note</span></td></tr>
+    <tr><td>CLI (cli.py)</td><td><span class="sev sev-low">GOOD — 1 minor issue</span></td></tr>
+    <tr><td>Documentation (README + BUILD-NOTES)</td><td><span class="sev sev-low">ACCURATE — 2 minor gaps</span></td></tr>
+  </table>
+
+  
+  <h2>Analysis of the Four Evaluation Failures</h2>
+  <p class="section-note">Source: eval/results.json. All four are genuine system-level findings, not bad test questions.</p>
+
+  <h3>Failure 1 — False fallback: "I changed my password yesterday and now the VPN will not connect"</h3>
+  <div class="finding">
+    <span class="sev sev-med">MODERATE</span>
+    <h3>Root cause: TF-IDF cannot bridge lexical paraphrase + score just below threshold (0.267 vs 0.300)</h3>
+    <p>The corpus sentence reads: <em>"a recently changed password is the most common cause"</em>. The query says <em>"changed my password yesterday"</em> and <em>"will not connect"</em>. After stopword removal:</p>
+    <ul>
+      <li>Query tokens: <code>changed</code>, <code>password</code>, <code>yesterday</code>, <code>vpn</code>, <code>connect</code>, <code>likely</code>, <code>cause</code></li>
+      <li><code>recently</code> ≠ <code>yesterday</code>, <code>connection</code> ≠ <code>connect</code> (no stemming), <code>failed</code> ≠ <code>will not connect</code></li>
+    </ul>
+    <p>DOC-002 is retrieved (top-1) but its score 0.267 is below the fixed 0.30 threshold. The keyword <code>"recently changed password"</code> in the eval keyword list is a compound phrase but the checker uses <code>in answer_lower</code> substring search, so this only tests whether the extracted sentence was about recent passwords — which it wasn't, because the system already fell back.</p>
+    <div class="fix">
+      <strong>Recommended fix (no architectural change):</strong> Add light suffix stemming — strip a trailing <code>s</code>, <code>ed</code>, <code>ing</code>, <code>ly</code> from tokens in both corpus and query before building the TF-IDF matrix. This is 10–15 lines in <code>tokenize()</code> and would close the <code>connect/connected/connection</code> and <code>recent/recently</code> gaps without touching threshold logic. Alternatively, lower the threshold to 0.26 and add a separate near-miss guard (minimum sentence overlap score &gt; 0) to avoid flooding.
+    </div>
+  </div>
+
+  <h3>Failure 2 — False fallback: "How many sick days do I get?"</h3>
+  <div class="finding">
+    <span class="sev sev-med">MODERATE</span>
+    <h3>Root cause: ultra-short query has insufficient token weight; score 0.277 vs threshold 0.300</h3>
+    <p>After stopword removal the query is just two tokens: <code>sick</code> and <code>days</code>. The word <code>sick</code> appears only in the "Sick leave" section of DOC-004, but <code>days</code> is high-frequency across all documents (annual leave, expense submission, software approval, etc.), so IDF for <code>days</code> is low, capping the score. DOC-004 is retrieved top-1 but just misses the threshold.</p>
+    <p>The near-miss unanswerable question "How do I change the toner cartridge on the third-floor printer?" scores 0.289 — only 0.012 above the sick-days query — confirming the bands overlap and threshold-only tuning cannot separate them.</p>
+    <div class="fix">
+      <strong>Recommended fix:</strong> Two complementary approaches: (1) for queries with ≤ 3 non-stopword tokens, apply a small score boost (+0.03) so very short in-corpus queries are not penalized by IDF dilution; (2) add <code>sick</code> and <code>sick leave</code> to the section heading of that corpus chunk so it carries double weight (title + section tokens are already concatenated in <code>_build()</code>). Both are 1–3 line changes.
+    </div>
+  </div>
+
+  <h3>Failure 3 — False answer: "What is the company's parental leave policy for contractors?"</h3>
+  <div class="finding">
+    <span class="sev sev-high">HIGH — Precision / Hallucination risk</span>
+    <h3>Root cause: TF-IDF has no scope/entity reasoning; retrieves the parental leave section and answers as if it applies to contractors</h3>
+    <p>DOC-004 contains a "Parental leave" section that scores 0.40. The extractive answer quotes sentences from that section verbatim. Those sentences describe the policy for <em>employees</em>, not contractors. The system has no mechanism to detect that <em>"for contractors"</em> is a scope qualifier that the retrieved document does not cover. The citation shows DOC-004, which looks authoritative to a user who doesn't read carefully.</p>
+    <div class="fix">
+      <strong>Recommended fix (pre-generative layer):</strong> Add an explicit scope-qualifier check in <code>answer()</code>: scan the question for the tokens <code>contractor</code>, <code>vendor</code>, <code>third party</code>, <code>freelance</code> and check whether any retrieved chunk's text contains the same qualifier. If not, downgrade the top-score by a penalty factor (e.g., 0.7×) before the threshold comparison. This is a targeted heuristic, not full NLU, but it catches the specific pattern of role-scoped questions against role-unscoped docs. The proper long-term fix is a generative layer with an explicit "does the source cover this entity?" instruction.
+    </div>
+  </div>
+
+  <h3>Failure 4 — False answer: "How do I reset my manager's password?"</h3>
+  <div class="finding">
+    <span class="sev sev-high">HIGH — Security concern in a real deployment</span>
+    <h3>Root cause: TF-IDF matches "reset" + "password" and returns self-service reset instructions as if they apply to resetting someone else's account</h3>
+    <p>DOC-001 (password reset) scores 0.355. The extractive answer quotes the self-service reset URL and procedure. For an IT support tool used by real employees, returning self-service reset instructions in response to "my manager's password" is a mild social-engineering vector — it implies anyone can initiate a password reset for another account. The expected behavior is a fallback to the Help Desk.</p>
+    <div class="fix">
+      <strong>Recommended fix:</strong> Add a possessive-third-party detector: check for token patterns like <code>my manager</code>, <code>someone else</code>, <code>colleague</code>, <code>'s password</code> (apostrophe-s before <code>password</code>). If detected and the top retrieved doc is about self-service reset, return the fallback text. This is a one-time heuristic addition to <code>answer()</code> (≈8 lines) before the generative model layer is available.
+    </div>
+  </div>
+
+  
+  <h2>Security &amp; Reliability Findings</h2>
+
+  <div class="finding">
+    <span class="sev sev-high">HIGH</span>
+    <h3>F-SEC-1 · app.py: No request body size cap — potential OOM / DoS</h3>
+    <p>In <code>Handler.do_POST()</code>, <code>length = int(self.headers.get("Content-Length", 0))</code> is used directly as the read size. A malicious (or buggy) caller can send an arbitrarily large <code>Content-Length</code>. The <code>rfile.read(length)</code> call will allocate up to available memory before JSON parsing. The UI enforces <code>maxlength="2000"</code> on the input, but the server-side has no matching guard.</p>
+    <div class="fix"><strong>Fix:</strong> Cap the read: <code>length = min(int(self.headers.get("Content-Length", 0)), 65_536)</code>. One line change.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-high">HIGH</span>
+    <h3>F-SEC-2 · app.py: Missing security response headers</h3>
+    <p>The HTTP server sends no <code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, or <code>Content-Security-Policy</code> headers. For a localhost prototype this is a low real-world risk, but for the submission evaluation it shows the HTTP layer is not hardened. The <code>PAGE</code> HTML uses inline <code>&lt;script&gt;</code>, which a strict CSP would block anyway — but adding the other two headers is trivially safe.</p>
+    <div class="fix"><strong>Fix:</strong> In <code>do_GET()</code> and <code>_send_json()</code>, add <code>self.send_header("X-Content-Type-Options", "nosniff")</code> and <code>self.send_header("X-Frame-Options", "DENY")</code>.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-high">HIGH</span>
+    <h3>F-SEC-3 · app.py: Global mutable class-level state for retriever</h3>
+    <p><code>Handler.retriever</code> and <code>Handler.backend</code> are set as class attributes in <code>main()</code>. <code>ThreadingHTTPServer</code> creates a new <code>Handler</code> instance per request, but all share the same class attribute. Because <code>TfidfRetriever</code> and <code>EmbeddingRetriever</code> are read-only after construction this is safe <em>today</em>, but reassigning <code>Handler.retriever</code> from any thread while requests are in flight would cause a data race. The pattern also makes testing difficult since the class state leaks across test cases.</p>
+    <div class="fix"><strong>Fix:</strong> Pass the retriever as a constructor argument via a custom <code>HandlerFactory</code> closure, or use a module-level <code>_state</code> dict instead of class attributes. The closure pattern is 4 lines.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-med">MEDIUM</span>
+    <h3>F-REL-1 · app.py: <code>log_message</code> is completely suppressed</h3>
+    <p>The override <code>def log_message(self, *args): pass</code> silences all HTTP access and error logs. This means 404s, 400 JSON parse errors, and exceptions during <code>do_POST()</code> produce no output. During a demo or evaluation run, silent errors are hard to diagnose.</p>
+    <div class="fix"><strong>Fix:</strong> Log at least error responses. Replace the no-op with a conditional: <code>if args and '200' not in str(args): print(args, file=sys.stderr)</code>. Or remove the override entirely and accept standard <code>http.server</code> access logs.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-med">MEDIUM</span>
+    <h3>F-REL-2 · retrieval.py: EmbeddingRetriever cache is not invalidated when corpus changes</h3>
+    <p>In <code>EmbeddingRetriever.__init__()</code>, the cache at <code>index/embeddings.npy</code> is reused if <code>mat.shape[0] == len(chunks)</code>. This means if a document is <em>replaced</em> with a different document that has the same number of chunks, stale embeddings are silently served. Chunk count equality is not a content integrity check.</p>
+    <div class="fix"><strong>Fix:</strong> Store a hash of the chunk texts alongside the cache (write a small <code>index/embeddings.sha256</code> sidecar), and invalidate when the hash changes. Alternatively, store a cache manifest with <code>chunk_id</code> list and compare that. 10–12 lines.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-med">MEDIUM</span>
+    <h3>F-REL-3 · retrieval.py: Broad <code>except Exception</code> swallows real import errors</h3>
+    <p>In <code>get_retriever()</code>:</p>
+    <pre>try:
+    import sentence_transformers  # noqa: F401
+    return EmbeddingRetriever(chunks), "embeddings"
+except Exception:
+    return TfidfRetriever(chunks), "tfidf"</pre>
+    <p>If <code>sentence_transformers</code> is installed but throws during <code>EmbeddingRetriever.__init__()</code> (e.g., model download fails, disk full, corrupted <code>embeddings.npy</code>), the error is silently swallowed and TF-IDF is used. The user has no indication that embeddings failed — they may think they are running the embeddings backend when they are not.</p>
+    <div class="fix"><strong>Fix:</strong> Catch only <code>ImportError</code> for the "not installed" case, and let other exceptions propagate. Or log a warning before falling back: <code>print(f"Warning: embeddings unavailable ({e}), using TF-IDF", file=sys.stderr)</code>.</div>
+  </div>
+
+  
+  <h2>Code Quality &amp; Correctness Issues</h2>
+
+  <div class="finding">
+    <span class="sev sev-med">MEDIUM</span>
+    <h3>F-QA-1 · ingest.py: YAML front matter parser is fragile</h3>
+    <p>The front matter parser splits on <code>":" in line</code> and uses <code>line.split(":", 1)</code>. This is correct for simple key-value pairs, but it fails for values that contain URLs (e.g., <code>last_updated: https://...</code> would split on the first colon). Currently all corpus entries use safe values, but adding a document with a URL in front matter metadata would silently truncate the value at the first colon.</p>
+    <div class="fix"><strong>Fix:</strong> <code>line.split(":", 1)</code> already uses <code>maxsplit=1</code>, so URLs in <em>values</em> are fine. The actual edge case is a colon in the <em>key name</em> — which YAML does not permit in bareword keys. No change needed, but add a comment: <code># keys may not contain colons (YAML bareword restriction)</code>.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-low">LOW</span>
+    <h3>F-QA-2 · ingest.py: Chunk ID numbering resets on each document, but uses len(chunks) across the whole batch</h3>
+    <p>In <code>chunk_doc()</code>, <code>chunk_id</code> is built as:</p>
+    <pre>f"{doc_id}-{len(chunks) + 1:02d}"</pre>
+    <p>where <code>chunks</code> is the local list being built for <em>this document only</em>. So chunk IDs are per-document sequential (DOC-001-01, DOC-001-02…), which is correct and human-readable. However, if a section produces multiple parts (the over-long section split), the counter advances correctly because it uses <code>len(chunks)</code> as a running total within the document's chunk list. This is functional but slightly confusing: the ID suffix is not "section number" but "chunk number within doc". Add a comment clarifying this.</p>
+    <div class="fix"><strong>Fix:</strong> Documentation-only. Add <code># chunk sequence within this document, 1-based</code> above the f-string.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-low">LOW</span>
+    <h3>F-QA-3 · answer.py: Sentence splitter regex is too coarse</h3>
+    <p><code>SENTENCE_RE = re.compile(r"(?&lt;=[.!?])\s+")</code> splits on whitespace after any sentence-ending punctuation. It does not handle abbreviations (e.g., <code>"at extension 4357 or email helpdesk@company.example. The Help Desk"</code> splits correctly, but <code>"approx. 10 business days"</code> would split after the abbreviation period). In the current synthetic corpus this doesn't manifest, but it is a latent bug for real documents.</p>
+    <div class="fix"><strong>Fix:</strong> Add a negative lookbehind for single uppercase initials: <code>(?&lt;!\\b[A-Z])(?&lt;=[.!?])\\s+</code> or use <code>nltk.sent_tokenize</code> if the dependency is acceptable. At MVP scale, adding a simple list of common abbreviations to skip is sufficient.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-low">LOW</span>
+    <h3>F-QA-4 · eval.py: <code>median_latency_ms</code> in results.json is 0.0 for most rows</h3>
+    <p>The latency timer in <code>answer()</code> starts with <code>time.perf_counter()</code> and captures time <em>only through the retriever's search call</em>. The sentence scoring and answer assembly happen <em>after</em> the timer stops. Additionally, after the first run the index is in OS page cache, so measured retrieval is sub-millisecond and rounds to 0.0. The committed <code>results.json</code> shows <code>"median_latency_ms": 0.0</code>.</p>
+    <div class="fix"><strong>Fix:</strong> Move <code>latency_ms = round((time.perf_counter() - started) * 1000, 1)</code> to the very end of <code>answer()</code> so it captures total answer time, not just retrieval. This makes the metric meaningful without hiding performance.</div>
+  </div>
+
+  <div class="finding">
+    <span class="sev sev-low">LOW</span>
+    <h3>F-QA-5 · cli.py: <code>cmd_eval</code> mutates <code>sys.argv</code></h3>
+    <p><code>cmd_eval</code> sets <code>sys.argv = ["eval"] + ...</code> before delegating to <code>eval_main()</code>. This is a side effect that breaks any test that checks <code>sys.argv</code> after calling <code>cmd_eval</code>, and it's unexpected for library code.</p>
+    <div class="fix"><strong>Fix:</strong> Pass the threshold directly to <code>run_eval(threshold=args.threshold)</code> from <code>rag_mvp.eval</code> and call it directly instead of shelling through <code>sys.argv</code>. This requires exposing the print/write logic separately or accepting both a programmatic and a CLI entry point in <code>eval.py</code>.</div>
+  </div>
+
+  
+  <h2>Documentation Accuracy</h2>
+  <p class="section-note">README.md and BUILD-NOTES.md are reviewed against the implemented code.</p>
+
+  <table>
+    <tr><th>Claim</th><th>Status</th><th>Notes</th></tr>
+    <tr>
+      <td>8 documents, 32 chunks (one per ## section)</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td>8 corpus files, 4 sections each confirmed</td>
+    </tr>
+    <tr>
+      <td>TF-IDF + optional MiniLM embeddings, interchangeable interface</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td><code>get_retriever()</code> implements the fallback correctly</td>
+    </tr>
+    <tr>
+      <td>Top-3 retrieved passages</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td>Default <code>top_k=3</code> in <code>answer()</code> and <code>search()</code></td>
+    </tr>
+    <tr>
+      <td>Fallback threshold 0.30, calibrated on this corpus</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td><code>DEFAULT_THRESHOLDS</code> set to 0.30 for both backends</td>
+    </tr>
+    <tr>
+      <td>Standard-library HTTP server, no Flask/FastAPI</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td><code>http.server.ThreadingHTTPServer</code> confirmed</td>
+    </tr>
+    <tr>
+      <td>"No generative model configured" flagged in answer mode field</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td><code>"mode": "extractive (no generative model configured)"</code> in every response</td>
+    </tr>
+    <tr>
+      <td>16/20 eval pass, 83.3% grounded-answer rate</td>
+      <td><span class="pass">✓ ACCURATE</span></td>
+      <td>Confirmed against results.json rows</td>
+    </tr>
+    <tr>
+      <td>Latency timer measures retrieval (not full answer time)</td>
+      <td><span class="warn">⚠ PARTIALLY ACCURATE</span></td>
+      <td>README says "latency timer measures retrieval, not full end-to-end response time" — this is true but the results.json median of 0.0 ms is misleading without that caveat in the UI</td>
+    </tr>
+    <tr>
+      <td>requirements.txt pins <code>sentence-transformers&gt;=3.0</code> as a required dependency</td>
+      <td><span class="warn">⚠ MISLEADING</span></td>
+      <td>The file lists it as required but it is explicitly optional. It should be in a <code>[extras]</code> or commented <code># optional</code> section</td>
+    </tr>
+    <tr>
+      <td>IBM Bob was not used in this build</td>
+      <td><span class="pass">✓ ACCURATE (as of initial build)</span></td>
+      <td>BUILD-NOTES.md is honest. This review session constitutes the first documented IBM Bob usage; the Technology Statement should be updated accordingly</td>
+    </tr>
+  </table>
+
+  
+  <h2>Recommended Tests</h2>
+
+  <h3>Unit Tests</h3>
+
+  <div class="test-block">
+    <strong>test_ingest.py — Ingestion and chunking</strong>
+    <ul>
+      <li><code>test_parse_doc_with_valid_frontmatter()</code> — assert <code>meta["doc_id"]</code>, <code>meta["title"]</code>, and <code>body</code> are correctly split</li>
+      <li><code>test_parse_doc_without_frontmatter()</code> — no leading <code>---</code>; assert entire text is returned as body, meta is empty dict</li>
+      <li><code>test_split_sections_basic()</code> — two <code>##</code> headings produce two <code>(heading, text)</code> tuples</li>
+      <li><code>test_split_sections_skips_h1()</code> — a <code># Title</code> line produces no section entry</li>
+      <li><code>test_chunk_doc_long_section()</code> — craft a section &gt;1500 chars; assert it splits into multiple parts with <code>"(part 1)"</code>/<code>"(part 2)"</code> suffixes</li>
+      <li><code>test_ingest_roundtrip(tmp_path)</code> — write a minimal .md file to <code>tmp_path</code>, call <code>ingest(tmp_path)</code>, assert chunk count and fields</li>
+    </ul>
+  </div>
+
+  <div class="test-block">
+    <strong>test_retrieval.py — TF-IDF retrieval</strong>
+    <ul>
+      <li><code>test_tfidf_returns_top_k()</code> — 5 chunks, assert <code>search("x", top_k=3)</code> returns exactly 3 results</li>
+      <li><code>test_tfidf_scores_in_range()</code> — all returned scores are in [0, 1]</li>
+      <li><code>test_tfidf_exact_term_scores_highest()</code> — a chunk containing the exact query term scores above a chunk that does not</li>
+      <li><code>test_tfidf_oov_query_returns_zero_scores()</code> — query with tokens not in vocab returns results with score 0.0 (no crash)</li>
+      <li><code>test_tokenize_removes_stopwords()</code> — assert <code>"the"</code>, <code>"is"</code>, <code>"for"</code> are not in <code>tokenize("the system is ready for use")</code></li>
+      <li><code>test_tokenize_lowercases()</code> — <code>tokenize("VPN")</code> returns <code>["vpn"]</code></li>
+    </ul>
+  </div>
+
+  <div class="test-block">
+    <strong>test_answer.py — Extractive answering and fallback</strong>
+    <ul>
+      <li><code>test_answer_returns_fallback_on_low_score()</code> — mock retriever returning score 0.10; assert <code>result["fallback"] is True</code> and <code>result["citations"] == []</code></li>
+      <li><code>test_answer_returns_fallback_on_no_sentence_overlap()</code> — retriever returns score 0.50 but chunk has no query-matching sentences; assert second-path fallback fires</li>
+      <li><code>test_answer_includes_citations()</code> — retriever returns a chunk with matching sentences; assert <code>len(citations) &gt;= 1</code> and each citation has <code>n</code>, <code>title</code>, <code>section</code>, <code>owner</code></li>
+      <li><code>test_answer_at_most_2_sentences_per_chunk()</code> — single chunk with 5 matching sentences; assert chosen list has ≤ 2 from that chunk</li>
+      <li><code>test_answer_text_prefix()</code> — assert non-fallback answer starts with <code>"Based on the approved support documents:"</code></li>
+      <li><code>test_split_sentences_minimum_length()</code> — assert sentences shorter than 20 chars are dropped</li>
+    </ul>
+  </div>
+
+  <div class="test-block">
+    <strong>test_app.py — HTTP handler</strong>
+    <ul>
+      <li><code>test_get_root_returns_html()</code> — issue a real <code>GET /</code> against a live <code>ThreadingHTTPServer</code> on a free port; assert 200 and <code>Content-Type: text/html</code></li>
+      <li><code>test_post_ask_valid_question()</code> — POST <code>{"question": "How do I reset my password?"}</code>; assert 200, JSON with keys <code>answer</code>, <code>citations</code>, <code>fallback</code></li>
+      <li><code>test_post_ask_missing_question()</code> — POST <code>{}</code>; assert 400 JSON with <code>"error"</code> key</li>
+      <li><code>test_post_ask_invalid_json()</code> — POST raw <code>"not json"</code>; assert 400</li>
+      <li><code>test_post_ask_oversized_body()</code> — once body cap is added: POST body &gt;65 536 bytes; assert it doesn't block or OOM</li>
+      <li><code>test_get_unknown_path_returns_404()</code> — <code>GET /robots.txt</code>; assert 404</li>
+    </ul>
+  </div>
+
+  <h3>Integration Tests</h3>
+
+  <div class="test-block">
+    <strong>test_pipeline.py — End-to-end pipeline</strong>
+    <ul>
+      <li><code>test_answerable_question_produces_citation(tmp_path)</code> — ingest corpus, build retriever, ask a question known to be answerable; assert <code>fallback is False</code> and ≥ 1 citation with correct <code>doc_id</code></li>
+      <li><code>test_unanswerable_question_produces_fallback(tmp_path)</code> — ask "What is the Wi-Fi password?"; assert <code>fallback is True</code> and <code>citations == []</code></li>
+      <li><code>test_all_eval_questions_stable()</code> — run <code>run_eval()</code>, assert <code>grounded_answer_rate &gt;= 0.80</code> and <code>citation_coverage == 1.0</code> (regression guard)</li>
+      <li><code>test_ingest_then_retrieve_uses_updated_corpus(tmp_path)</code> — ingest, add a new document, re-ingest, assert the new doc's terms appear in top results for a matching query</li>
+    </ul>
+  </div>
+
+  <div class="test-block">
+    <strong>test_eval_harness.py — Eval correctness</strong>
+    <ul>
+      <li><code>test_run_eval_produces_valid_schema()</code> — assert <code>summary</code> and <code>rows</code> keys exist, all rows have required fields</li>
+      <li><code>test_run_eval_citation_coverage_denominator()</code> — assert <code>citation_coverage</code> denominator uses only non-fallback rows, not all rows</li>
+      <li><code>test_run_eval_false_fallback_rate_calculation()</code> — inject a fixture with 2 answerable questions both returning fallback; assert <code>false_fallback_rate == 1.0</code></li>
+    </ul>
+  </div>
+
+  
+  <h2>Prioritized Fix Recommendations</h2>
+  <table>
+    <tr><th>#</th><th>Finding</th><th>Severity</th><th>Effort</th><th>Impact</th></tr>
+    <tr>
+      <td>1</td>
+      <td>Add request body size cap in <code>do_POST()</code></td>
+      <td><span class="sev sev-high">HIGH</span></td>
+      <td>1 line</td>
+      <td>Prevents DoS / OOM before any shared hosting</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Narrow <code>except Exception</code> → <code>except ImportError</code> in <code>get_retriever()</code> + warn on fallback</td>
+      <td><span class="sev sev-med">MEDIUM</span></td>
+      <td>3 lines</td>
+      <td>Surfaces real errors; prevents silent wrong-backend usage</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Add scope-qualifier check for contractor/vendor entity mismatch (failure 3)</td>
+      <td><span class="sev sev-high">HIGH</span></td>
+      <td>8–10 lines in answer.py</td>
+      <td>Fixes false-answer eval failure; real security concern</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Add possessive-third-party check for "my manager's password" pattern (failure 4)</td>
+      <td><span class="sev sev-high">HIGH</span></td>
+      <td>6–8 lines in answer.py</td>
+      <td>Fixes false-answer eval failure; important for trust</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Add light suffix stemming to <code>tokenize()</code> (failures 1 &amp; 2)</td>
+      <td><span class="sev sev-med">MEDIUM</span></td>
+      <td>12–15 lines in retrieval.py</td>
+      <td>Closes lexical paraphrase gap; may move both scores above threshold</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Move latency timer to end of <code>answer()</code></td>
+      <td><span class="sev sev-low">LOW</span></td>
+      <td>2 lines</td>
+      <td>Makes the reported metric meaningful</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Add security response headers in HTTP handler</td>
+      <td><span class="sev sev-high">HIGH</span></td>
+      <td>4 lines</td>
+      <td>Hardened HTTP posture for any shared/demo deployment</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Mark <code>sentence-transformers</code> as optional in requirements.txt</td>
+      <td><span class="sev sev-low">LOW</span></td>
+      <td>1 line comment</td>
+      <td>Prevents install confusion for new contributors</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>EmbeddingRetriever cache invalidation by content hash</td>
+      <td><span class="sev sev-med">MEDIUM</span></td>
+      <td>12 lines</td>
+      <td>Prevents stale embeddings after corpus update</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Fix <code>cmd_eval</code> <code>sys.argv</code> mutation in cli.py</td>
+      <td><span class="sev sev-low">LOW</span></td>
+      <td>5 lines</td>
+      <td>Makes CLI testable; removes unexpected side effect</td>
+    </tr>
+  </table>
+
+  
+  <h2>Overall Assessment</h2>
+  <table>
+    <tr><th>Dimension</th><th>Score</th><th>Notes</th></tr>
+    <tr><td>Correctness of core pipeline</td><td><span class="pass">Strong</span></td><td>Ingestion, retrieval, citation, and fallback all work as documented</td></tr>
+    <tr><td>Retrieval quality (TF-IDF baseline)</td><td><span class="warn">Adequate</span></td><td>83% grounded-answer rate; two failures are fixable with stemming</td></tr>
+    <tr><td>Safety / fallback reliability</td><td><span class="warn">Adequate</span></td><td>75% correct-fallback; two scope-bypass failures need targeted heuristics</td></tr>
+    <tr><td>Web server security</td><td><span class="fail">Needs work</span></td><td>No body cap, no security headers; acceptable for localhost prototype only</td></tr>
+    <tr><td>Code clarity and structure</td><td><span class="pass">Strong</span></td><td>Clean module separation, good docstrings, explicit honesty about limitations</td></tr>
+    <tr><td>Documentation accuracy</td><td><span class="pass">Accurate</span></td><td>All major claims confirmed; two minor inaccuracies (latency metric, requirements.txt)</td></tr>
+    <tr><td>Test coverage</td><td><span class="fail">None shipped</span></td><td>No test files exist; full unit + integration suite recommended before production</td></tr>
+  </table>
+
+  <p>The prototype is a credible MVP that honestly represents what it does and does not do. The generation gap is acknowledged, the fallback mechanism is working, citations are always present on non-fallback answers, and the eval harness exposes real failures rather than hiding them. The recommended fixes are all small and non-architectural. The most important immediate actions for the submission context are: document the IBM Bob review session in the Technology Statement, and add the body-cap and scope-qualifier guards before any shared deployment.</p>
+
+<footer>Made with IBM Bob  ·  IBM SkillsBuild AI Experiential Learning Lab  ·  Review date: November 22, 2026</footer>
+</div>
+</body>
+</html>

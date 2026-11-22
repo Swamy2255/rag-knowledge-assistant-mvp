@@ -1,6 +1,20 @@
 # RAG knowledge assistant MVP — dependencies
-# Core runs on the standard library + NumPy only (TF-IDF retriever).
-# sentence-transformers is optional: when installed, the retriever uses
-# real embeddings (all-MiniLM-L6-v2); otherwise it falls back to TF-IDF.
+#
+# Core (required):
+#   Only NumPy is needed to run the TF-IDF retriever, the web UI,
+#   the CLI, and the eval harness.
 numpy>=1.26
-sentence-transformers>=3.0
+#
+# Optional — semantic embeddings backend:
+#   Install sentence-transformers to enable the MiniLM embedding retriever
+#   (all-MiniLM-L6-v2).  When NOT installed the system automatically uses
+#   the TF-IDF baseline — no code change required.
+#
+#   Installation (requires network access and ~2 GB disk for PyTorch):
+#     pip install "sentence-transformers>=3.0"
+#
+#   After installing, re-run the eval harness to calibrate the threshold:
+#     python -m rag_mvp.eval
+#   The TF-IDF threshold (0.30) does not transfer to embedding cosine scores.
+#
+# sentence-transformers>=3.0
